@@ -1,0 +1,11 @@
+listening for TCP traffic on :42069
+accepted connection from: [::1]:54662
+POST /coffee HTTP/1.1
+Host: localhost:42069
+User-Agent: curl/8.7.1
+Accept: */*
+Content-Type: application/json
+Content-Length: 23
+
+{"flavor": "dark mode"}
+connection to [::1]:54662 closed
