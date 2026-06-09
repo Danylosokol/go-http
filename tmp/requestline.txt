@@ -1,0 +1,7 @@
+listening for TCP traffic on :42069
+accepted connection from: [::1]:61282
+Request line:
+- Method: GET
+- Target: /prime/agen
+- Version: 1.1
+connection to [::1]:61282 closed

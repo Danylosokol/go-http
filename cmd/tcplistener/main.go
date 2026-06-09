@@ -1,12 +1,11 @@
 package main
 
 import (
-	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net"
-	"strings"
+
+	"github.com/danylo-sokol/go-http/internal/request"
 )
 
 const port = ":42069"
@@ -25,47 +24,16 @@ func main() {
 		}
 		fmt.Printf("accepted connection from: %s\n", conn.RemoteAddr())
 
-		linesChannel := getLinesChannel(conn)
+		request, errRequest := request.RequestFromReader(conn)
 
-		for line := range linesChannel {
-			fmt.Println(line)
+		if errRequest != nil {
+			log.Fatalf("something went wrong with reading the request...")
 		}
+
+		fmt.Printf("Request line:\n")
+		fmt.Printf("- Method: %s\n", request.RequestLine.Method)
+		fmt.Printf("- Target: %s\n", request.RequestLine.RequestTarget)
+		fmt.Printf("- Version: %s\n", request.RequestLine.HttpVersion)
 		fmt.Printf("connection to %s closed", conn.RemoteAddr())
 	}
-}
-
-func getLinesChannel(conn net.Conn) <-chan string {
-	linesChannel := make(chan string)
-
-	go func() {
-		defer conn.Close()
-		defer close(linesChannel)
-		currentLine := ""
-		for {
-			buffer := make([]byte, 8)
-			n, err := conn.Read(buffer)
-			if err != nil {
-				if currentLine != "" {
-					linesChannel <- currentLine
-					currentLine = ""
-				}
-				if errors.Is(err, io.EOF) {
-					break
-				}
-				fmt.Printf("error: %s\n", err.Error())
-				break
-			}
-
-			str := string(buffer[:n])
-			parts := strings.Split(str, "\n")
-			for i := 0; i < len(parts)-1; i++ {
-				newLine := currentLine + parts[i]
-				linesChannel <- newLine
-				currentLine = ""
-			}
-			currentLine += parts[len(parts)-1]
-		}
-	}()
-
-	return linesChannel
 }
