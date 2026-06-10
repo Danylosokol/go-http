@@ -3,6 +3,7 @@ package headers
 import (
 	"bytes"
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -15,6 +16,7 @@ func NewHeaders() Headers {
 }
 
 func (h Headers) Parse(data []byte) (n int, done bool, err error) {
+	var specialCharacters = []string{"!", "#", "$", "%", "&", "'", "*", "+", "-", ".", "^", "_", "`", "|", "~"}
 	fmt.Printf("data: %v \n", data)
 	indx := bytes.Index(data, []byte(crlf))
 	if indx == -1 {
@@ -30,9 +32,15 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 		return 0, false, fmt.Errorf("Expected to have key and a value split by :")
 	}
 
-	key := headerLineParts[0]
+	key := strings.ToLower(headerLineParts[0])
 	if strings.TrimSpace(key) != key {
 		return 0, false, fmt.Errorf("Invalid spacing header")
+	}
+	for _, r := range key{
+		c := string(r)
+		if !(c >= "a" && c <= "z") && !(c >= "0" && c <= "9") && !slices.Contains(specialCharacters, c) {
+			return 0, false, fmt.Errorf("Invalid character in header key")
+		}
 	}
 
 	value := strings.TrimSpace(headerLineParts[1])
