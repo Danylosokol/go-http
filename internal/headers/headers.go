@@ -18,6 +18,7 @@ func NewHeaders() Headers {
 func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 	fmt.Printf("data: %v \n", data)
 	indx := bytes.Index(data, []byte(crlf))
+	fmt.Printf("header crlf is at: %d\n", indx)
 	if indx == -1 {
 		return 0, false, nil
 	}
