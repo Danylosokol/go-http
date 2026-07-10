@@ -16,9 +16,7 @@ func NewHeaders() Headers {
 }
 
 func (h Headers) Parse(data []byte) (n int, done bool, err error) {
-	fmt.Printf("data: %v \n", data)
 	indx := bytes.Index(data, []byte(crlf))
-	fmt.Printf("header crlf is at: %d\n", indx)
 	if indx == -1 {
 		return 0, false, nil
 	}
@@ -46,6 +44,15 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 	h.Set(key, value)
 
 	return len(data[:indx]) + 2, false, nil
+}
+
+func (h Headers) Get(key string) (value string, err error) {
+	normalisedKey := strings.ToLower(key)
+	value, ok := h[normalisedKey]
+	if ok {
+		return value, nil
+	}
+	return "", fmt.Errorf("Key not found")
 }
 
 var specialCharacters = []byte{'!', '#', '$', '%', '&', '\'', '*', '+', '-', '.', '^', '_', '`', '|', '~'}

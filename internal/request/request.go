@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/danylo-sokol/go-http/internal/headers"
@@ -15,6 +16,7 @@ type ParserState int
 const (
 	requestStateInitialized ParserState = iota
 	requestStateParsingHeaders
+	requestStateParsingBody
 	requestStateDone
 )
 
@@ -28,16 +30,18 @@ type Request struct {
 	RequestLine RequestLine
 	ParserState ParserState
 	Headers     headers.Headers
+	Body        []byte
 }
 
 const crlf = "\r\n"
 const bufferSize = 8
+const contentLengthKey = "Content-Length"
 
 func RequestFromReader(reader io.Reader) (*Request, error) {
 	request := Request{
 		RequestLine: RequestLine{},
 		ParserState: requestStateInitialized,
-		Headers: headers.NewHeaders(),
+		Headers:     headers.NewHeaders(),
 	}
 	buffer := make([]byte, bufferSize)
 	readToIndex := 0
@@ -107,9 +111,30 @@ func (r *Request) parseSingle(data []byte) (int, error) {
 			return 0, err
 		}
 		if done {
-			r.ParserState = requestStateDone
+			r.ParserState = requestStateParsingBody
 		}
 		return n, nil
+	case requestStateParsingBody:
+		value, err := r.Headers.Get(contentLengthKey)
+		if err != nil {
+			if err.Error() == "Key not found" {
+				r.ParserState = requestStateDone
+				return 0, nil
+			}
+			return 0, err
+		}
+		r.Body = append(r.Body, data...)
+		contentLength, parseErr := strconv.Atoi(value)
+		if parseErr != nil {
+			return 0, fmt.Errorf("error: could not parse Content-Length value: %v", parseErr)
+		}
+		if contentLength < len(r.Body) {
+			return 0, fmt.Errorf("error: body is longer than reported Content-Length: %d", len(r.Body))
+		}
+		if contentLength == len(r.Body) {
+			r.ParserState = requestStateDone
+		}
+		return len(data), nil
 	case requestStateDone:
 		return 0, fmt.Errorf("error: trying to read data in a done state")
 	default:
