@@ -46,13 +46,10 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 	return len(data[:indx]) + 2, false, nil
 }
 
-func (h Headers) Get(key string) (value string, err error) {
-	normalisedKey := strings.ToLower(key)
-	value, ok := h[normalisedKey]
-	if ok {
-		return value, nil
-	}
-	return "", fmt.Errorf("Key not found")
+func (h Headers) Get(key string) (string, bool) {
+	key = strings.ToLower(key)
+	value, ok := h[key]
+	return value, ok
 }
 
 var specialCharacters = []byte{'!', '#', '$', '%', '&', '\'', '*', '+', '-', '.', '^', '_', '`', '|', '~'}

@@ -27,10 +27,11 @@ type RequestLine struct {
 }
 
 type Request struct {
-	RequestLine RequestLine
-	ParserState ParserState
-	Headers     headers.Headers
-	Body        []byte
+	RequestLine    RequestLine
+	ParserState    ParserState
+	Headers        headers.Headers
+	Body           []byte
+	BodyLengthRead int
 }
 
 const crlf = "\r\n"
@@ -42,6 +43,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		RequestLine: RequestLine{},
 		ParserState: requestStateInitialized,
 		Headers:     headers.NewHeaders(),
+		Body:        make([]byte, 0),
 	}
 	buffer := make([]byte, bufferSize)
 	readToIndex := 0
@@ -115,23 +117,21 @@ func (r *Request) parseSingle(data []byte) (int, error) {
 		}
 		return n, nil
 	case requestStateParsingBody:
-		value, err := r.Headers.Get(contentLengthKey)
+		value, ok := r.Headers.Get(contentLengthKey)
+		if !ok {
+			r.ParserState = requestStateDone
+			return len(data), nil
+		}
+		contentLength, err := strconv.Atoi(value)
 		if err != nil {
-			if err.Error() == "Key not found" {
-				r.ParserState = requestStateDone
-				return 0, nil
-			}
-			return 0, err
+			return 0, fmt.Errorf("error: could not parse Content-Length value: %v", err)
 		}
 		r.Body = append(r.Body, data...)
-		contentLength, parseErr := strconv.Atoi(value)
-		if parseErr != nil {
-			return 0, fmt.Errorf("error: could not parse Content-Length value: %v", parseErr)
-		}
-		if contentLength < len(r.Body) {
+		r.BodyLengthRead += len(data)
+		if contentLength < r.BodyLengthRead {
 			return 0, fmt.Errorf("error: body is longer than reported Content-Length: %d", len(r.Body))
 		}
-		if contentLength == len(r.Body) {
+		if contentLength == r.BodyLengthRead {
 			r.ParserState = requestStateDone
 		}
 		return len(data), nil
