@@ -38,6 +38,8 @@ func main() {
 		for key, value := range request.Headers {
 			fmt.Printf("- %s: %s\n", key, value)
 		}
-		fmt.Printf("connection to %s closed", conn.RemoteAddr())
+		fmt.Printf("Body:\n")
+		fmt.Printf("%s\n", string(request.Body))
+		fmt.Printf("connection to %s closed\n", conn.RemoteAddr())
 	}
 }
