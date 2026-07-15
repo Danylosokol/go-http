@@ -1,18 +1,21 @@
 package main
 
 import (
+	"io"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/danylo-sokol/go-http/internal/request"
+	"github.com/danylo-sokol/go-http/internal/response"
 	"github.com/danylo-sokol/go-http/internal/server"
 )
 
 const port = 42069
 
 func main() {
-	server, err := server.Serve(port)
+	server, err := server.Serve(port, handlerFunc)
 	if err != nil {
 		log.Fatalf("Error starting server: %v\n", err)
 	}
@@ -23,4 +26,23 @@ func main() {
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	<-sigChan
 	log.Println("Server gracefully stopped")
+}
+
+func handlerFunc(w io.Writer, req *request.Request) *server.HandlerError {
+	switch req.RequestLine.RequestTarget {
+	case "/yourproblem":
+		return &server.HandlerError{
+			StatusCode: response.StatusCodeBadRequest,
+			Message:    "Your problem is not my problem\n",
+		}
+	case "/myproblem":
+		return &server.HandlerError{
+			StatusCode: response.StatusCodeInternalServerError,
+			Message:    "Woopsie, my bad\n",
+		}
+	default:
+		bodyContent := "All good, frfr\n"
+		w.Write([]byte(bodyContent))
+		return nil
+	}
 }
