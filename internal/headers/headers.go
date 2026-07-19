@@ -72,6 +72,7 @@ func validTokens(data []byte) bool {
 }
 
 func (h Headers) Set(key, value string) {
+	key = strings.ToLower(key)
 	v, ok := h[key]
 	if ok {
 		value = strings.Join([]string{v, value}, ", ")
@@ -82,4 +83,9 @@ func (h Headers) Set(key, value string) {
 func (h Headers) Override(key, value string) {
 	key = strings.ToLower(key)
 	h[key] = value
+}
+
+func (h Headers) Remove(key string) {
+	key = strings.ToLower(key)
+	delete(h, key)
 }
