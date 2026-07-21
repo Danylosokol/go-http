@@ -50,7 +50,25 @@ func handler(w *response.Writer, req *request.Request) {
 		handler500(w, req)
 		return
 	}
+	if req.RequestLine.RequestTarget == "/video" {
+		handlerVideo(w, req)
+		return
+	}
 	handler200(w, req)
+	return
+}
+
+func handlerVideo(w *response.Writer, _ *request.Request) {
+	videoData, err := os.ReadFile("assets/vim.mp4")
+	if err != nil {
+		handler500(w, nil)
+		return
+	}
+	h := response.GetDefaultHeaders(len(videoData))
+	h.Override("Content-Type", "video/mp4")
+	w.WriteStatusLine(response.StatusCodeSuccess)
+	w.WriteHeaders(h)
+	w.WriteBody(videoData)
 	return
 }
 
