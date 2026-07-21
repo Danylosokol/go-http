@@ -1,15 +1,18 @@
 package main
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 
+	"github.com/danylo-sokol/go-http/internal/headers"
 	"github.com/danylo-sokol/go-http/internal/request"
 	"github.com/danylo-sokol/go-http/internal/response"
 	"github.com/danylo-sokol/go-http/internal/server"
@@ -67,9 +70,11 @@ func handlerHttpbin(w *response.Writer, r *request.Request) {
 	h := response.GetDefaultHeaders(0)
 	h.Remove("Content-Length")
 	h.Set("Transfer-Encoding", "chunked")
+	h.Set("Trailer", "X-Content-SHA256, X-Content-Length")
 	w.WriteHeaders(h)
 
 	buffer := make([]byte, 1024)
+	fullBody := make([]byte, 0)
 	for {
 		n, err := res.Body.Read(buffer)
 		fmt.Printf("read %d bytes from response body\n", n)
@@ -80,6 +85,7 @@ func handlerHttpbin(w *response.Writer, r *request.Request) {
 				fmt.Printf("error writing chunked body: %v\n", err)
 				break
 			}
+			fullBody = append(fullBody, buffer[:n]...)
 		}
 		if err == io.EOF {
 			fmt.Printf("Finished reading response body\n")
@@ -90,9 +96,18 @@ func handlerHttpbin(w *response.Writer, r *request.Request) {
 			break
 		}
 	}
-	_, err = w.WriteChunkedBodyDone()
+	_, err = w.WriteChunkedBodyDone(true)
 	if err != nil {
 		fmt.Printf("error writing chunked body done: %v\n", err)
+	}
+	sum := sha256.Sum256(fullBody)
+	contentLength := strconv.Itoa(len(fullBody))
+	trailerHeaders := headers.NewHeaders()
+	trailerHeaders.Set("X-Content-SHA256", fmt.Sprintf("%x", sum))
+	trailerHeaders.Set("X-Content-Length", contentLength)
+	err = w.WriteTrailers(trailerHeaders)
+	if err != nil {
+		fmt.Printf("error writng trailer headers: %v\n", err)
 	}
 }
 
